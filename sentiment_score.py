@@ -4,8 +4,10 @@ import os
 import openai
 from datetime import datetime
 import json
+import time
 
-pl.Config.set_tbl_rows(20)
+pl.Config.set_tbl_rows(50)
+pl.Config.set_tbl_cols(20)
 pl.Config.set_fmt_str_lengths(100)
 
 # Import data
@@ -37,13 +39,15 @@ sample_news = (df_deduped
                     .alias('date')
                     , pl.col('seendate')
                     .str.strptime(pl.Date, format="%Y%m%dT%H%M%SZ")
-                    .dt.weekday().alias('weekday')    
+                    .dt.weekday().cast(pl.Int64).alias('weekday')    
                   ])
                 .select(['title', 'date', 'weekday', 'domain', 'language', 'sourcecountry'])
                 .sort('date', descending=True)
                 .filter(pl.col('date') < datetime(2023, 7, 7))
-                .head(2300)
+                .head(600)
+                .filter(pl.col('date') > datetime(2023, 6, 29))
                 .with_row_count()
+                .with_columns(pl.col('row_nr').cast(pl.Int64))
               )
 
 # Sample
@@ -57,29 +61,54 @@ openai.api_key = "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"
 # Output dataframe
 openai_response = pl.DataFrame()
 
-for i in sample_news['row_nr'][:10]:
+for i in sample_news['row_nr']:
 
   # Send a query
-  response = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",
-    messages=[{"role": "user", "content": 
-              f"""Data id: {sample_news['row_nr'][i]}
-              Title: {sample_news['title'][i]}
-              Return the id number
-              , sentiment score of the title (Sentiment score can be postive negative or neutral.)
-              , the most import word for the sentiment
-              , the country it relates to(if not available use "Other")
-              , the region it relates - options are US, Americas, Asia, Europe, UK, Other
-              and the tone of the title is in range from 1 to -1 with intervals of .1(always return a float).
-              Data format of the response is a dictionary.
-              Keys values are -  'id', 'sentiment', 'word', 'country', 'region', 'tone' """}],
-    max_tokens=100,
-    temperature=0
-  )
 
+  response = openai.ChatCompletion.create(
+      model="gpt-3.5-turbo",
+      messages=[{"role": "user", "content": 
+                f"""Data id: {sample_news['row_nr'][i]}
+                Title: {sample_news['title'][i]}
+                Return the id number
+                , sentiment score of the title (Sentiment score can be postive negative or neutral.)
+                , the most import word for the sentiment
+                , the country it relates to(if not available use "Other")
+                , the region it relates - options are US, China, UK, Americas, Asia, Europe, Africa, Other
+                and the tone of the title is in range from 1 to -1 with intervals of .1(always return a float).
+                Data format of the response is a dictionary.
+                Keys values are -  'id', 'sentiment', 'word', 'country', 'region', 'tone'.
+                Return should do not contain any other characters other than the dictionary!
+                String values should be writen with double quotes!"""}],
+      max_tokens=200,
+      temperature=0
+    )
+  
   # Read the response
   loop_df = pl.DataFrame(json.loads(response['choices'][0]['message']['content']))
-
+  # time.sleep(1)
   openai_response = openai_response.vstack(loop_df)
 
-sample_news[7]
+output = sample_news.join(openai_response, how='inner', left_on='row_nr', right_on='id')
+
+
+  # response = openai.Completion.create(
+  #   model="text-davinci-003",
+  #   prompt=f"""Data id: {sample_news['row_nr'][i]}
+  #               Title: {sample_news['title'][i]}
+  #               Return the id number
+  #               , sentiment score of the title (Sentiment score can be postive negative or neutral.)
+  #               , the most import word for the sentiment
+  #               , the country it relates to(if not available use "Other")
+  #               , the region it relates - options are US, China, UK, Americas, Asia, Europe, Africa, Other
+  #               and the tone of the title is in range from 1 to -1 with intervals of .1(always return a float).
+  #               Data format of the response is a dictionary. 
+  #               Keys values are -  "id", "sentiment", "word", "country", "region", "tone".
+  #               Return should do not contain any other characters other than the dictionary!
+  #               String values should be writen with double quotes!
+  #               """,
+  #     max_tokens=100,
+  #     temperature=0
+  # )
+
+  # response['choices'][0]['text'].strip()
