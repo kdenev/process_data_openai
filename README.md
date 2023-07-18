@@ -5,7 +5,7 @@
 <h1 align="center">OpenAI Sentiment Analysis</h1>
 <p align="center">Use OpenAI model to extract sentiment from news title.</p>
 
-<p align="left">Extracting the sentiment of news titles(~600 in this case). This process focuses on the dataset creation. The input generated for this classification process is produced by this <span href=https://github.com/kdenev/gdelt_api>code</span> The resulting dataset has 12 columns : 'row_nr', 'title', 'date', 'weekday', 'domain', 'language', 'sourcecountry', 'sentiment', 'word', 'country', 'region', 'tone'. Sentiment can be either positive, negative or neutral.</p>
+<p align="left">Extracting the sentiment of news titles(~600 in this case). This process focuses on the dataset creation. The input generated for this classification process is produced by this <a href=https://github.com/kdenev/gdelt_api>code</a> The resulting dataset has 12 columns : 'row_nr', 'title', 'date', 'weekday', 'domain', 'language', 'sourcecountry', 'sentiment', 'word', 'country', 'region', 'tone'. Sentiment can be either positive, negative or neutral.</p>
 
 <p>You will need to insert your own API key to use the code.</p>
 
