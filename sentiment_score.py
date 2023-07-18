@@ -1,14 +1,19 @@
+# Import packages
 import polars as pl
-import pandas as pd
 import os
 import openai
-from datetime import datetime
 import json
-import time
+from datetime import datetime
 
+
+# Polars options
 pl.Config.set_tbl_rows(50)
 pl.Config.set_tbl_cols(20)
 pl.Config.set_fmt_str_lengths(100)
+
+# Openai credentials
+os.environ['OPENAI_API_KEY'] = '' # <-- Insert API KEY Here
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 # Import data
 df = pl.read_csv('gdelt_api\output20230707.csv')
@@ -31,7 +36,7 @@ list_duped_names = (df
 df_deduped = df.with_columns(pl.col('title').str.to_lowercase()).groupby('title').first()
 
 # Test Sample
-
+# Covers 1 whole week
 sample_news = (df_deduped
                 .with_columns([
                     pl.col('seendate')
@@ -53,10 +58,6 @@ sample_news = (df_deduped
 # Sample
 sample_news.groupby(['date']).count().sort('date', descending=True)
 sample_news.groupby(['weekday']).count().sort('weekday')
-
-# Openai credentials
-openai.organization = "org-WUwBe3JxtbS5s9X8zhF4DY3K"
-openai.api_key = "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"
 
 # Output dataframe
 openai_response = pl.DataFrame()
@@ -99,6 +100,5 @@ for frame in sample_news.iter_slices(n_rows=batch_size):
 output = sample_news.join(openai_response, how='inner', left_on='row_nr', right_on='id')
 
 # Output to parquet
-# Parquet saves the column/date details
+# Parquet saves the columns format
 output.write_parquet('process_data_openai\output.parquet')
-
