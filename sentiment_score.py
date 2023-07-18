@@ -64,6 +64,7 @@ openai_response = pl.DataFrame()
 # Define batchsize
 batch_size = 30
 
+# Loop through the dataset
 for frame in sample_news.iter_slices(n_rows=batch_size):
 
   # Send a query
@@ -87,7 +88,7 @@ for frame in sample_news.iter_slices(n_rows=batch_size):
       max_tokens = 2000,
       n=1
     )
-  
+  # Check the len of response items
   content_len = len(json.loads(response['choices'][0]['message']['content']))
 
   for j in range(content_len):
