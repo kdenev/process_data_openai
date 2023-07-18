@@ -61,33 +61,40 @@ sample_news.groupby(['weekday']).count().sort('weekday')
 
 # Output dataframe
 openai_response = pl.DataFrame()
+# Define batchsize
+batch_size = 30
 
-for i in sample_news['row_nr']:
+for frame in sample_news.iter_slices(n_rows=batch_size):
 
   # Send a query
-
   response = openai.ChatCompletion.create(
       model="gpt-3.5-turbo",
       messages=[{"role": "user", "content": 
-                f"""Data id: {sample_news['row_nr'][i]}
-                Title: {sample_news['title'][i]}
+                f"""Data id: {frame['row_nr'].to_list()}
+                Title: {frame['title'].to_list()}
+                Both inputs are list.
                 Return the id number
-                , sentiment score of the title (Sentiment score can be postive negative or neutral.)
+                , sentiment score of the title (Sentiment shuold be connected to the economy/market. Sentiment score can ONLY be postive negative or neutral! )
                 , the most import word for the sentiment
-                , the country it relates to(if not available use "Other")
+                , the country(can only have 1 value) it relates to, if not available use "Other"
                 , the region it relates - options are US, China, UK, Americas, Asia, Europe, Africa, Other
                 and the tone of the title is in range from 1 to -1 with intervals of .1(always return a float).
-                Data format of the response is a dictionary.
+                Data format of the completion is a list of dictionaries. For each id return a dictionary.
                 Keys values are -  'id', 'sentiment', 'word', 'country', 'region', 'tone'.
-                Return should do not contain any other characters other than the dictionary!
+                Return should do not contain any other characters other than the list of dictionaries!
                 String values should be writen with double quotes!"""}],
-      max_tokens=200,
-      temperature=0
+      temperature=0,
+      max_tokens = 2000,
+      n=1
     )
   
-  # Read the response
-  loop_df = pl.DataFrame(json.loads(response['choices'][0]['message']['content']))
-  # time.sleep(1)
-  openai_response = openai_response.vstack(loop_df)
+  content_len = len(json.loads(response['choices'][0]['message']['content']))
 
+  for j in range(content_len):
+    # Read the response
+    loop_df = pl.DataFrame(json.loads(response['choices'][0]['message']['content'])[j])
+    # Stack the dataset
+    openai_response = openai_response.vstack(loop_df)
+
+# Join the openai responses
 output = sample_news.join(openai_response, how='inner', left_on='row_nr', right_on='id')
